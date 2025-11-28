@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "713448478174",
+    "project_id": "hushbuddy-9fdbb",
+    "storage_bucket": "hushbuddy-9fdbb.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:713448478174:android:6ff2a49192cc02c932b94f",
+        "android_client_info": {
+          "package_name": "com.example.babybeacon"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyBQHLxovASVVL7HhoXW0fG2KSujLdRmPwE"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
