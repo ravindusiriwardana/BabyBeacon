@@ -16,6 +16,7 @@ dependencies:
   cloud_firestore: ^5.4.4
   google_sign_in: ^6.2.1  # ✅ MOBILE VERSION (NOT WEB)
   cupertino_icons: ^1.0.2
+  web_socket_channel: ^3.0.1   
 
 dev_dependencies:
   flutter_test:
