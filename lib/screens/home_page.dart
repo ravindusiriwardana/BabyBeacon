@@ -70,7 +70,7 @@ class _HomePageState extends State<HomePage> {
     if (mood.contains('laugh') || mood.contains('happy')) return '😄';
     if (mood.contains('silence') || mood.contains('sleep')) return '😴';
     if (mood.contains('noise')) return '🔊';
-    return '👂'; // Default/Listening
+    return '🤗'; // Default/Listening
   }
 
   Future<void> _loadBabyProfile() async {
