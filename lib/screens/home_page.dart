@@ -1,12 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
-import '../services/baby_monitor_service.dart'; // Ensure correct path
-import 'profile_page.dart'; // Ensure correct path to your profile page
+import '../services/baby_monitor_service.dart';
+import 'profile_page.dart';
+import 'dart:async';
 
 class HomePage extends StatefulWidget {
   const HomePage({super.key});
-
   @override
   State<HomePage> createState() => _HomePageState();
 }
@@ -16,64 +16,45 @@ class _HomePageState extends State<HomePage> {
   bool isLoading = true;
   bool hasProfile = false;
 
-  // 🔹 Real-time Emotion State Variables
+  // Emotion
   String _currentMood = "Monitoring...";
-  double _confidence = 0.0;
+  double _emotionConfidence = 0.0;
+
+  // Posture - NEW
+  String _currentPosture = "Detecting...";
+  double _postureConfidence = 0.0;
+
   bool _isMonitorConnected = false;
 
   @override
   void initState() {
     super.initState();
     _loadBabyProfile();
-    
-    // 🔹 Start Listening to WebSocket
     _connectToBabyMonitor();
-  }
-
-  @override
-  void dispose() {
-    // Optional: Disconnect when leaving page, or keep it running if you want background monitoring
-    // BabyMonitorService().disconnect(); 
-    super.dispose();
   }
 
   void _connectToBabyMonitor() {
     BabyMonitorService().connect(callback: (data) {
-      if (mounted) {
-        setState(() {
-          // Format the mood string (e.g., "crying" -> "Crying")
-          String rawMood = data['emotion'] ?? "Unknown";
-          _currentMood = rawMood[0].toUpperCase() + rawMood.substring(1);
-          
-          // Handle confidence
-          _confidence = (data['confidence'] ?? 0.0).toDouble();
-          _isMonitorConnected = true;
-        });
-      }
+      if (!mounted) return;
+
+      setState(() {
+        // Emotion
+        String rawMood = data['emotion'] ?? "unknown";
+        _currentMood = rawMood[0].toUpperCase() + rawMood.substring(1).toLowerCase();
+        _emotionConfidence = (data['confidence'] ?? 0.0).toDouble();
+
+        // Posture
+        String rawPosture = data['posture'] ?? "unknown";
+        _currentPosture = rawPosture[0].toUpperCase() + rawPosture.substring(1).toLowerCase();
+        _postureConfidence = (data['posture_confidence'] ?? 0.0).toDouble();
+
+        _isMonitorConnected = true;
+      });
     });
   }
 
-  // 🔹 Helper to get color based on mood
-  Color _getMoodColor(String mood) {
-    mood = mood.toLowerCase();
-    if (mood.contains('cry')) return Colors.red;
-    if (mood.contains('laugh') || mood.contains('happy')) return Colors.green;
-    if (mood.contains('silence') || mood.contains('sleep')) return Colors.blue;
-    if (mood.contains('noise')) return Colors.orange;
-    return Colors.pink; // Default
-  }
-
-  // 🔹 Helper to get icon based on mood
-  String _getMoodIcon(String mood) {
-    mood = mood.toLowerCase();
-    if (mood.contains('cry')) return '😭';
-    if (mood.contains('laugh') || mood.contains('happy')) return '😄';
-    if (mood.contains('silence') || mood.contains('sleep')) return '😴';
-    if (mood.contains('noise')) return '🔊';
-    return '🤗'; // Default/Listening
-  }
-
   Future<void> _loadBabyProfile() async {
+    setState(() => isLoading = true);
     try {
       final user = FirebaseAuth.instance.currentUser;
       if (user == null) {
@@ -88,19 +69,15 @@ class _HomePageState extends State<HomePage> {
 
       if (mounted) {
         setState(() {
-          if (doc.exists) {
+          if (doc.exists && doc.data() != null) {
             babyData = doc.data()!;
             hasProfile = true;
-          } else {
-            hasProfile = false;
           }
           isLoading = false;
         });
       }
     } catch (e) {
-      if (mounted) {
-        setState(() => isLoading = false);
-      }
+      if (mounted) setState(() => isLoading = false);
     }
   }
 
@@ -127,7 +104,7 @@ class _HomePageState extends State<HomePage> {
   }
 
   Future<void> _signOut(BuildContext context) async {
-    BabyMonitorService().disconnect(); // Disconnect WS on logout
+    BabyMonitorService().disconnect();
     await FirebaseAuth.instance.signOut();
     if (context.mounted) {
       Navigator.pushNamedAndRemoveUntil(context, '/login', (route) => false);
@@ -136,9 +113,45 @@ class _HomePageState extends State<HomePage> {
 
   void _navigateToProfile() {
     Navigator.push(
-      context, 
-      MaterialPageRoute(builder: (context) => const BabyProfilePage())
+      context,
+      MaterialPageRoute(builder: (context) => const BabyProfilePage()),
     ).then((_) => _loadBabyProfile());
+  }
+
+  Color _getMoodColor() {
+    final mood = _currentMood.toLowerCase();
+    if (mood.contains('cry')) return Colors.red;
+    if (mood.contains('laugh') || mood.contains('happy')) return Colors.green;
+    if (mood.contains('silence') || mood.contains('sleep')) return Colors.blue;
+    if (mood.contains('noise')) return Colors.orange;
+    return Colors.pink;
+  }
+
+  String _getMoodIcon() {
+    final mood = _currentMood.toLowerCase();
+    if (mood.contains('cry')) return '😢';
+    if (mood.contains('laugh') || mood.contains('happy')) return '😊';
+    if (mood.contains('silence') || mood.contains('sleep')) return '😴';
+    if (mood.contains('noise')) return '🔊';
+    return '😐';
+  }
+
+  Color _getPostureColor() {
+    final posture = _currentPosture.toLowerCase();
+    if (posture.contains('sitting') || posture.contains('upright')) return Colors.green;
+    if (posture.contains('lying') || posture.contains('supine')) return Colors.blue;
+    if (posture.contains('crawling') || posture.contains('prone')) return Colors.orange;
+    if (posture.contains('standing')) return Colors.purple;
+    return Colors.grey;
+  }
+
+  String _getPostureIcon() {
+    final posture = _currentPosture.toLowerCase();
+    if (posture.contains('sitting')) return '🪑';
+    if (posture.contains('lying') || posture.contains('supine')) return '🛏️';
+    if (posture.contains('crawling') || posture.contains('prone')) return '🐛';
+    if (posture.contains('standing')) return '🧍';
+    return '❓';
   }
 
   @override
@@ -158,313 +171,458 @@ class _HomePageState extends State<HomePage> {
 
     return Scaffold(
       backgroundColor: const Color(0xFFF8FAFC),
-      appBar: AppBar(
-        title: Text(
-          hasProfile ? '👶 ${babyData!['name']}' : '👶 $parentName\'s Baby',
-          style: const TextStyle(fontWeight: FontWeight.bold),
-        ),
-        backgroundColor: Colors.pink[400],
-        foregroundColor: Colors.white,
-        actions: [
-          // 🆕 EDIT PROFILE ICON BUTTON ADDED HERE
-          IconButton(
-            icon: const Icon(Icons.edit_rounded),
-            tooltip: 'Edit Profile',
-            onPressed: _navigateToProfile,
-          ),
-          IconButton(
-            icon: const Icon(Icons.logout_rounded),
-            tooltip: 'Sign Out',
-            onPressed: () => _signOut(context),
-          ),
-        ],
-      ),
-      body: RefreshIndicator(
-        onRefresh: _loadBabyProfile,
-        color: Colors.pink[400],
-        child: SingleChildScrollView(
-          physics: const AlwaysScrollableScrollPhysics(parent: BouncingScrollPhysics()),
-          padding: const EdgeInsets.all(20.0),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              // --- HEADER SECTION ---
-              Container(
-                width: double.infinity,
-                padding: const EdgeInsets.symmetric(vertical: 32, horizontal: 24),
+      body: CustomScrollView(
+        physics: const BouncingScrollPhysics(),
+        slivers: [
+          // Modern App Bar
+          SliverAppBar(
+            expandedHeight: 200,
+            floating: false,
+            pinned: true,
+            backgroundColor: Colors.pink[400],
+            flexibleSpace: FlexibleSpaceBar(
+              background: Container(
                 decoration: BoxDecoration(
                   gradient: LinearGradient(
-                    colors: [Colors.pink[400]!, Colors.purple[400]!],
+                    colors: [Colors.pink[400]!, Colors.purple[300]!],
                     begin: Alignment.topLeft,
                     end: Alignment.bottomRight,
                   ),
-                  borderRadius: BorderRadius.circular(28),
-                  boxShadow: [
-                    BoxShadow(
-                      color: Colors.pink.withValues(alpha: 0.4),
-                      blurRadius: 24,
-                      offset: const Offset(0, 12),
-                    ),
-                  ],
                 ),
-                child: Column(
-                  children: [
-                    CircleAvatar(
-                      radius: 52,
-                      backgroundColor: Colors.white,
-                      child: Icon(Icons.child_care, size: 58, color: Colors.pink),
+                child: SafeArea(
+                  child: Padding(
+                    padding: const EdgeInsets.fromLTRB(20, 40, 20, 20),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                          children: [
+                            Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  'Hello, $parentName 👋',
+                                  style: const TextStyle(
+                                    color: Colors.white70,
+                                    fontSize: 14,
+                                    fontWeight: FontWeight.w500,
+                                  ),
+                                ),
+                                const SizedBox(height: 4),
+                                Text(
+                                  hasProfile ? babyData!['name'] : 'Your Baby',
+                                  style: const TextStyle(
+                                    color: Colors.white,
+                                    fontSize: 28,
+                                    fontWeight: FontWeight.bold,
+                                  ),
+                                ),
+                              ],
+                            ),
+                            Row(
+                              children: [
+                                _buildHeaderButton(Icons.edit_rounded, _navigateToProfile),
+                                const SizedBox(width: 8),
+                                _buildHeaderButton(Icons.logout_rounded, () => _signOut(context)),
+                              ],
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 12),
+                        Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                          decoration: BoxDecoration(
+                            color: Colors.white.withOpacity(0.2),
+                            borderRadius: BorderRadius.circular(20),
+                          ),
+                          child: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              const Icon(Icons.cake_outlined, color: Colors.white, size: 16),
+                              const SizedBox(width: 6),
+                              Text(
+                                age,
+                                style: const TextStyle(
+                                  color: Colors.white,
+                                  fontSize: 13,
+                                  fontWeight: FontWeight.w600,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ],
                     ),
-                    const SizedBox(height: 24),
-                    Text(
-                      hasProfile ? babyData!['name'] : 'Baby Profile',
-                      style: const TextStyle(
-                          fontSize: 32, fontWeight: FontWeight.bold, color: Colors.white),
-                    ),
-                    const SizedBox(height: 12),
-                    Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-                      decoration: BoxDecoration(
-                          color: Colors.white.withValues(alpha: 0.2),
-                          borderRadius: BorderRadius.circular(20)),
-                      child: Text(
-                        age,
-                        style: const TextStyle(
-                            fontSize: 16, color: Colors.white, fontWeight: FontWeight.w600),
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-
-              const SizedBox(height: 36),
-
-              // --- STATISTICS HEADER ---
-              Row(
-                children: [
-                  Container(
-                    padding: const EdgeInsets.all(8),
-                    decoration: BoxDecoration(
-                      color: Colors.purple[50],
-                      borderRadius: BorderRadius.circular(10),
-                    ),
-                    child: const Text('📊', style: TextStyle(fontSize: 20)),
-                  ),
-                  const SizedBox(width: 12),
-                  const Text(
-                    'Today\'s Statistics',
-                    style: TextStyle(
-                        fontSize: 22, fontWeight: FontWeight.bold, color: Colors.purple),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 20),
-
-              // --- STAT CARDS ---
-              Row(
-                children: [
-                  Expanded(
-                    child: _buildStatCard('🥛', 'Feedings', '0', Colors.green, 'Tap to log'),
-                  ),
-                  const SizedBox(width: 16),
-                  Expanded(
-                    child: _buildStatCard('🛌', 'Sleep', '0h 0m', Colors.blue, 'Tap to log'),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 16),
-
-              Row(
-                children: [
-                  Expanded(
-                    child: _buildStatCard('💙', 'Diapers', '0', Colors.orange, 'Tap to log'),
-                  ),
-                  const SizedBox(width: 16),
-                  
-                  // 🔹 DYNAMIC MOOD CARD
-                  Expanded(
-                    child: _buildStatCard(
-                      _getMoodIcon(_currentMood), // Dynamic Icon
-                      'Current Mood',
-                      _currentMood, // Dynamic Text
-                      _getMoodColor(_currentMood), // Dynamic Color
-                      _isMonitorConnected 
-                          ? 'Live • ${( _confidence * 100).toStringAsFixed(0)}% Match' 
-                          : 'Connecting...', // Status text
-                      isLive: true // Special styling flag
-                    ),
-                  ),
-                ],
-              ),
-
-              const SizedBox(height: 36),
-              
-              // Only showing growth if profile exists
-              if (hasProfile) ...[
-                 Row(
-                  children: [
-                    Container(
-                      padding: const EdgeInsets.all(8),
-                      decoration: BoxDecoration(
-                        color: Colors.purple[50],
-                        borderRadius: BorderRadius.circular(10),
-                      ),
-                      child: const Text('📈', style: TextStyle(fontSize: 20)),
-                    ),
-                    const SizedBox(width: 12),
-                    const Text(
-                      'Growth Metrics',
-                      style: TextStyle(
-                        fontSize: 22, fontWeight: FontWeight.bold, color: Colors.purple),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 20),
-                Container(
-                  width: double.infinity,
-                  padding: const EdgeInsets.all(24),
-                  decoration: BoxDecoration(
-                    color: Colors.white,
-                    borderRadius: BorderRadius.circular(24),
-                    boxShadow: [
-                      BoxShadow(
-                        color: Colors.grey.withValues(alpha: 0.1),
-                        blurRadius: 20,
-                        offset: const Offset(0, 4),
-                      ),
-                    ],
-                  ),
-                  child: Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceAround,
-                    children: [
-                      _buildGrowthMetric('📏', 'Height', '${babyData!['height']?.toStringAsFixed(1) ?? 0.0} cm', Colors.teal),
-                      Container(width: 1.5, height: 60, color: Colors.grey[200]),
-                      _buildGrowthMetric('⚖️', 'Weight', '${babyData!['weight']?.toStringAsFixed(1) ?? 0.0} kg', Colors.amber),
-                    ],
                   ),
                 ),
-                const SizedBox(height: 36),
-              ],
-
-              // Quick Actions Header
-               Row(
-                children: [
-                  Container(
-                    padding: const EdgeInsets.all(8),
-                    decoration: BoxDecoration(
-                      color: Colors.purple[50],
-                      borderRadius: BorderRadius.circular(10),
-                    ),
-                    child: const Text('🚀', style: TextStyle(fontSize: 20)),
-                  ),
-                  const SizedBox(width: 12),
-                  const Text(
-                    'Quick Actions',
-                    style: TextStyle(
-                      fontSize: 22, fontWeight: FontWeight.bold, color: Colors.purple),
-                  ),
-                ],
               ),
-              const SizedBox(height: 20),
-
-              // Quick Actions Grid - REMOVED PROFILE EDIT BUTTON FROM HERE
-              GridView.count(
-                shrinkWrap: true,
-                physics: const NeverScrollableScrollPhysics(),
-                crossAxisCount: 2, // You can change this to 3 now if the items look too wide
-                crossAxisSpacing: 16,
-                mainAxisSpacing: 16,
-                childAspectRatio: 1.1,
-                children: [
-                  _buildActionCard(Icons.restaurant_rounded, 'Log Feeding', Colors.green, () {}),
-                  _buildActionCard(Icons.bedtime_rounded, 'Log Sleep', Colors.blue, () {}),
-                  _buildActionCard(Icons.child_care_rounded, 'Diaper Change', Colors.orange, () {}),
-                  // Removed the Edit Profile button from here as requested
-                ],
-              ),
-              const SizedBox(height: 24),
-            ],
+            ),
           ),
+
+          // Content
+          SliverToBoxAdapter(
+            child: RefreshIndicator(
+              onRefresh: _loadBabyProfile,
+              color: Colors.pink[400],
+              child: Padding(
+                padding: const EdgeInsets.all(20.0),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    // LIVE MONITORING SECTION
+                    _buildSectionHeader('📡 Live Monitoring', 'Real-time baby tracking'),
+                    const SizedBox(height: 16),
+                    
+                    // Emotion & Posture Cards - Stacked
+                    _buildModernLiveCard(
+                      icon: _getMoodIcon(),
+                      title: 'Current Mood',
+                      value: _currentMood,
+                      confidence: _emotionConfidence,
+                      color: _getMoodColor(),
+                      isConnected: _isMonitorConnected,
+                    ),
+                    
+                    const SizedBox(height: 12),
+                    
+                    _buildModernLiveCard(
+                      icon: _getPostureIcon(),
+                      title: 'Current Posture',
+                      value: _currentPosture,
+                      confidence: _postureConfidence,
+                      color: _getPostureColor(),
+                      isConnected: _isMonitorConnected,
+                    ),
+
+                    const SizedBox(height: 32),
+
+                    // STATISTICS SECTION
+                    _buildSectionHeader('📊 Today\'s Activity', 'Daily summary'),
+                    const SizedBox(height: 16),
+                    
+                    _buildStatsGrid(),
+
+                    const SizedBox(height: 32),
+
+                    // GROWTH METRICS (if profile exists)
+                    if (hasProfile) ...[
+                      _buildSectionHeader('📈 Growth Tracking', 'Latest measurements'),
+                      const SizedBox(height: 16),
+                      _buildGrowthCard(),
+                      const SizedBox(height: 32),
+                    ],
+
+                    // QUICK ACTIONS
+                    _buildSectionHeader('⚡ Quick Actions', 'Log activities'),
+                    const SizedBox(height: 16),
+                    _buildQuickActionsGrid(),
+
+                    const SizedBox(height: 24),
+                  ],
+                ),
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildHeaderButton(IconData icon, VoidCallback onTap) {
+    return Material(
+      color: Colors.white.withOpacity(0.2),
+      borderRadius: BorderRadius.circular(12),
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(12),
+        child: Container(
+          padding: const EdgeInsets.all(8),
+          child: Icon(icon, color: Colors.white, size: 20),
         ),
       ),
     );
   }
 
-  // 🔹 UPDATED STAT CARD WIDGET
-  Widget _buildStatCard(
-      String icon, String title, String value, Color color, String subtitle, {bool isLive = false}) {
+  Widget _buildSectionHeader(String title, String subtitle) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          title,
+          style: const TextStyle(
+            fontSize: 20,
+            fontWeight: FontWeight.bold,
+            color: Color(0xFF1E293B),
+          ),
+        ),
+        const SizedBox(height: 4),
+        Text(
+          subtitle,
+          style: TextStyle(
+            fontSize: 13,
+            color: Colors.grey[600],
+            fontWeight: FontWeight.w500,
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildModernLiveCard({
+    required String icon,
+    required String title,
+    required String value,
+    required double confidence,
+    required Color color,
+    required bool isConnected,
+  }) {
     return Container(
-      padding: const EdgeInsets.all(18),
+      width: double.infinity,
+      padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(20),
-        border: isLive ? Border.all(color: color.withOpacity(0.3), width: 2) : null,
         boxShadow: [
           BoxShadow(
-            color: isLive ? color.withOpacity(0.1) : Colors.grey.withValues(alpha: 0.08),
+            color: color.withOpacity(0.08),
             blurRadius: 20,
             offset: const Offset(0, 4),
           ),
         ],
       ),
-      child: Column(
+      child: Row(
         children: [
+          // Icon Container
           Container(
-            padding: const EdgeInsets.all(10),
+            padding: const EdgeInsets.all(16),
             decoration: BoxDecoration(
-              color: color.withValues(alpha: 0.1),
-              borderRadius: BorderRadius.circular(12),
+              color: color.withOpacity(0.1),
+              borderRadius: BorderRadius.circular(16),
             ),
-            child: Text(icon, style: const TextStyle(fontSize: 28)),
+            child: Text(
+              icon,
+              style: const TextStyle(fontSize: 32),
+            ),
           ),
-          const SizedBox(height: 12),
+          const SizedBox(width: 16),
+          
+          // Content
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  children: [
+                    Text(
+                      title,
+                      style: TextStyle(
+                        fontSize: 13,
+                        color: Colors.grey[600],
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    if (isConnected)
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                        decoration: BoxDecoration(
+                          color: Colors.red.withOpacity(0.1),
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Container(
+                              width: 6,
+                              height: 6,
+                              decoration: const BoxDecoration(
+                                color: Colors.red,
+                                shape: BoxShape.circle,
+                              ),
+                            ),
+                            const SizedBox(width: 4),
+                            const Text(
+                              'LIVE',
+                              style: TextStyle(
+                                color: Colors.red,
+                                fontSize: 9,
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                  ],
+                ),
+                const SizedBox(height: 6),
+                Text(
+                  value,
+                  style: TextStyle(
+                    fontSize: 22,
+                    fontWeight: FontWeight.bold,
+                    color: color,
+                  ),
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  isConnected
+                      ? '${(confidence * 100).toStringAsFixed(0)}% confidence'
+                      : 'Connecting...',
+                  style: TextStyle(
+                    fontSize: 11,
+                    color: Colors.grey[500],
+                    fontWeight: FontWeight.w500,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildStatsGrid() {
+    return GridView.count(
+      shrinkWrap: true,
+      physics: const NeverScrollableScrollPhysics(),
+      crossAxisCount: 2,
+      crossAxisSpacing: 12,
+      mainAxisSpacing: 12,
+      childAspectRatio: 1.15,
+      children: [
+        _buildStatCard('🍼', 'Feedings', '0', Colors.green),
+        _buildStatCard('😴', 'Sleep', '0h 0m', Colors.blue),
+        _buildStatCard('🩺', 'Diapers', '0', Colors.orange),
+        _buildStatCard('🎯', 'Activity', 'Active', Colors.purple),
+      ],
+    );
+  }
+
+  Widget _buildStatCard(String icon, String title, String value, Color color) {
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(20),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.grey.withOpacity(0.06),
+            blurRadius: 15,
+            offset: const Offset(0, 4),
+          ),
+        ],
+      ),
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Text(icon, style: const TextStyle(fontSize: 32)),
+          const SizedBox(height: 10),
           Text(
             title,
             style: TextStyle(
-              fontSize: 13,
+              fontSize: 12,
               color: Colors.grey[600],
               fontWeight: FontWeight.w600,
             ),
           ),
-          const SizedBox(height: 8),
-          FittedBox(
-            fit: BoxFit.scaleDown,
-            child: Text(
-              value,
-              style: TextStyle(
-                fontSize: 24,
-                fontWeight: FontWeight.bold,
-                color: isLive ? color : Colors.grey[800],
-              ),
+          const SizedBox(height: 6),
+          Text(
+            value,
+            style: TextStyle(
+              fontSize: 20,
+              fontWeight: FontWeight.bold,
+              color: color,
             ),
           ),
-          const SizedBox(height: 6),
-          if (isLive)
-             Row(
-               mainAxisAlignment: MainAxisAlignment.center,
-               children: [
-                 if (_isMonitorConnected)
-                   Container(
-                     margin: const EdgeInsets.only(right: 4),
-                     width: 6,
-                     height: 6,
-                     decoration: const BoxDecoration(
-                       color: Colors.red,
-                       shape: BoxShape.circle,
-                     ),
-                   ),
-                 Text(
-                    subtitle,
-                    style: TextStyle(fontSize: 11, color: color, fontWeight: FontWeight.bold),
-                 ),
-               ],
-             )
-          else
-            Text(
-              subtitle,
-              style: TextStyle(fontSize: 11, color: Colors.grey[500], fontWeight: FontWeight.w500),
-            ),
         ],
       ),
+    );
+  }
+
+  Widget _buildGrowthCard() {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(24),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(20),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.grey.withOpacity(0.06),
+            blurRadius: 15,
+            offset: const Offset(0, 4),
+          ),
+        ],
+      ),
+      child: Row(
+        children: [
+          Expanded(
+            child: _buildGrowthMetric(
+              '📏',
+              'Height',
+              '${babyData!['height']?.toStringAsFixed(1) ?? 0.0} cm',
+              Colors.teal,
+            ),
+          ),
+          Container(
+            width: 1,
+            height: 60,
+            color: Colors.grey[200],
+          ),
+          Expanded(
+            child: _buildGrowthMetric(
+              '⚖️',
+              'Weight',
+              '${babyData!['weight']?.toStringAsFixed(1) ?? 0.0} kg',
+              Colors.amber,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildGrowthMetric(String icon, String title, String value, Color color) {
+    return Column(
+      children: [
+        Text(icon, style: const TextStyle(fontSize: 32)),
+        const SizedBox(height: 8),
+        Text(
+          title,
+          style: TextStyle(
+            fontSize: 12,
+            color: Colors.grey[600],
+            fontWeight: FontWeight.w600,
+          ),
+        ),
+        const SizedBox(height: 4),
+        Text(
+          value,
+          style: TextStyle(
+            fontSize: 18,
+            fontWeight: FontWeight.bold,
+            color: color,
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildQuickActionsGrid() {
+    return GridView.count(
+      shrinkWrap: true,
+      physics: const NeverScrollableScrollPhysics(),
+      crossAxisCount: 3,
+      crossAxisSpacing: 12,
+      mainAxisSpacing: 12,
+      childAspectRatio: 0.95,
+      children: [
+        _buildActionCard(Icons.restaurant_rounded, 'Feed', Colors.green, () {}),
+        _buildActionCard(Icons.bedtime_rounded, 'Sleep', Colors.blue, () {}),
+        _buildActionCard(Icons.child_care_rounded, 'Diaper', Colors.orange, () {}),
+      ],
     );
   }
 
@@ -475,14 +633,14 @@ class _HomePageState extends State<HomePage> {
         onTap: onTap,
         borderRadius: BorderRadius.circular(20),
         child: Container(
-          padding: const EdgeInsets.all(20),
+          padding: const EdgeInsets.all(12),
           decoration: BoxDecoration(
             color: Colors.white,
             borderRadius: BorderRadius.circular(20),
             boxShadow: [
               BoxShadow(
-                color: Colors.grey.withValues(alpha: 0.08),
-                blurRadius: 20,
+                color: Colors.grey.withOpacity(0.06),
+                blurRadius: 15,
                 offset: const Offset(0, 4),
               ),
             ],
@@ -491,54 +649,27 @@ class _HomePageState extends State<HomePage> {
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
               Container(
-                padding: const EdgeInsets.all(14),
+                padding: const EdgeInsets.all(12),
                 decoration: BoxDecoration(
-                  color: color.withValues(alpha: 0.1),
-                  borderRadius: BorderRadius.circular(16),
+                  color: color.withOpacity(0.1),
+                  borderRadius: BorderRadius.circular(14),
                 ),
-                child: Icon(icon, size: 32, color: color),
+                child: Icon(icon, size: 24, color: color),
               ),
-              const SizedBox(height: 14),
+              const SizedBox(height: 8),
               Text(
                 title,
                 style: TextStyle(
-                  fontSize: 15,
+                  fontSize: 13,
                   fontWeight: FontWeight.w600,
                   color: Colors.grey[800],
                 ),
                 textAlign: TextAlign.center,
-                maxLines: 2,
-                overflow: TextOverflow.ellipsis,
               ),
             ],
           ),
         ),
       ),
-    );
-  }
-
-  Widget _buildGrowthMetric(String icon, String title, String value, Color color) {
-    return Column(
-      children: [
-        Container(
-          padding: const EdgeInsets.all(10),
-          decoration: BoxDecoration(
-            color: color.withValues(alpha: 0.1),
-            borderRadius: BorderRadius.circular(12),
-          ),
-          child: Text(icon, style: const TextStyle(fontSize: 28)),
-        ),
-        const SizedBox(height: 10),
-        Text(
-          title,
-          style: TextStyle(fontSize: 13, color: Colors.grey[600], fontWeight: FontWeight.w600),
-        ),
-        const SizedBox(height: 6),
-        Text(
-          value,
-          style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: Colors.grey[800]),
-        ),
-      ],
     );
   }
 }
