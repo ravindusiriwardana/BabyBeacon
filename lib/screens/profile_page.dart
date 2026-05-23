@@ -164,8 +164,8 @@ class _BabyProfilePageState extends State<BabyProfilePage> {
   void _showSuccessAndNavigate() {
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
-        content: Row(
-          children: const [
+        content: const Row(
+          children: [
             Icon(Icons.check_circle_rounded, color: Colors.white, size: 26),
             SizedBox(width: 12),
             Expanded(
@@ -249,8 +249,8 @@ class _BabyProfilePageState extends State<BabyProfilePage> {
             ),
           ),
         ),
-        title: Row(
-          children: const [
+        title: const Row(
+          children: [
             Icon(Icons.child_care_rounded, color: Colors.white, size: 24),
             SizedBox(width: 10),
             Text(
@@ -275,9 +275,9 @@ class _BabyProfilePageState extends State<BabyProfilePage> {
                 color: Colors.white.withValues(alpha: 0.2),
                 borderRadius: BorderRadius.circular(20),
               ),
-              child: Row(
+              child: const Row(
                 mainAxisSize: MainAxisSize.min,
-                children: const [
+                children: [
                   SizedBox(
                     height: 18,
                     width: 18,
@@ -631,7 +631,7 @@ class _BabyProfilePageState extends State<BabyProfilePage> {
                 'Gender',
                 Icons.wc_rounded,
                 DropdownButtonFormField<String>(
-                  value: _gender,
+                  initialValue: _gender,
                   style: const TextStyle(
                     fontSize: 16,
                     fontWeight: FontWeight.w500,
@@ -696,9 +696,9 @@ class _BabyProfilePageState extends State<BabyProfilePage> {
                     ),
                   ),
                   child: _isLoading
-                      ? Row(
+                      ? const Row(
                           mainAxisAlignment: MainAxisAlignment.center,
-                          children: const [
+                          children: [
                             SizedBox(
                               height: 24,
                               width: 24,
@@ -718,9 +718,9 @@ class _BabyProfilePageState extends State<BabyProfilePage> {
                             ),
                           ],
                         )
-                      : Row(
+                      : const Row(
                           mainAxisAlignment: MainAxisAlignment.center,
-                          children: const [
+                          children: [
                             Icon(Icons.save_rounded, size: 22),
                             SizedBox(width: 12),
                             Text(

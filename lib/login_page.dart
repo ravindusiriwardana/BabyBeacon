@@ -35,8 +35,8 @@ class _LoginPageState extends State<LoginPage> {
       if (context.mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Row(
-              children: const [
+            content: const Row(
+              children: [
                 Icon(Icons.check_circle, color: Colors.white),
                 SizedBox(width: 12),
                 Text("Login Successful! Redirecting...",
@@ -137,8 +137,8 @@ class _LoginPageState extends State<LoginPage> {
       if (context.mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Row(
-              children: const [
+            content: const Row(
+              children: [
                 Icon(Icons.check_circle, color: Colors.white),
                 SizedBox(width: 12),
                 Text("Google Login Successful!",
@@ -468,9 +468,9 @@ class _LoginPageState extends State<LoginPage> {
                             strokeWidth: 2.5,
                           ),
                         )
-                      : Row(
+                      : const Row(
                           mainAxisAlignment: MainAxisAlignment.center,
-                          children: const [
+                          children: [
                             Icon(Icons.login_rounded, size: 22),
                             SizedBox(width: 12),
                             Text(

@@ -20,7 +20,7 @@ class _HomePageState extends State<HomePage> {
   String _currentMood = "Monitoring...";
   double _emotionConfidence = 0.0;
 
-  // Posture - NEW
+  // Posture
   String _currentPosture = "Detecting...";
   double _postureConfidence = 0.0;
 
@@ -118,6 +118,14 @@ class _HomePageState extends State<HomePage> {
     ).then((_) => _loadBabyProfile());
   }
 
+  // NEW: Navigate to Live Monitoring Tab
+  void _navigateToLiveStream() {
+    Navigator.push(
+      context,
+      MaterialPageRoute(builder: (context) => const LiveMonitoringPage()),
+    );
+  }
+
   Color _getMoodColor() {
     final mood = _currentMood.toLowerCase();
     if (mood.contains('cry')) return Colors.red;
@@ -174,7 +182,6 @@ class _HomePageState extends State<HomePage> {
       body: CustomScrollView(
         physics: const BouncingScrollPhysics(),
         slivers: [
-          // Modern App Bar
           SliverAppBar(
             expandedHeight: 200,
             floating: false,
@@ -260,7 +267,6 @@ class _HomePageState extends State<HomePage> {
             ),
           ),
 
-          // Content
           SliverToBoxAdapter(
             child: RefreshIndicator(
               onRefresh: _loadBabyProfile,
@@ -271,10 +277,24 @@ class _HomePageState extends State<HomePage> {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     // LIVE MONITORING SECTION
-                    _buildSectionHeader('📡 Live Monitoring', 'Real-time baby tracking'),
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        _buildSectionHeader('📡 Live Monitoring', 'Real-time baby tracking'),
+                        TextButton.icon(
+                          onPressed: _navigateToLiveStream,
+                          icon: const Icon(Icons.videocam_rounded, size: 18),
+                          label: const Text('View Live'),
+                          style: TextButton.styleFrom(
+                            foregroundColor: Colors.pink[400],
+                            backgroundColor: Colors.pink[50],
+                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                          ),
+                        ),
+                      ],
+                    ),
                     const SizedBox(height: 16),
                     
-                    // Emotion & Posture Cards - Stacked
                     _buildModernLiveCard(
                       icon: _getMoodIcon(),
                       title: 'Current Mood',
@@ -297,7 +317,6 @@ class _HomePageState extends State<HomePage> {
 
                     const SizedBox(height: 32),
 
-                    // STATISTICS SECTION
                     _buildSectionHeader('📊 Today\'s Activity', 'Daily summary'),
                     const SizedBox(height: 16),
                     
@@ -305,7 +324,6 @@ class _HomePageState extends State<HomePage> {
 
                     const SizedBox(height: 32),
 
-                    // GROWTH METRICS (if profile exists)
                     if (hasProfile) ...[
                       _buildSectionHeader('📈 Growth Tracking', 'Latest measurements'),
                       const SizedBox(height: 16),
@@ -313,7 +331,6 @@ class _HomePageState extends State<HomePage> {
                       const SizedBox(height: 32),
                     ],
 
-                    // QUICK ACTIONS
                     _buildSectionHeader('⚡ Quick Actions', 'Log activities'),
                     const SizedBox(height: 16),
                     _buildQuickActionsGrid(),
@@ -329,6 +346,7 @@ class _HomePageState extends State<HomePage> {
     );
   }
 
+  // Existing UI Helper Methods...
   Widget _buildHeaderButton(IconData icon, VoidCallback onTap) {
     return Material(
       color: Colors.white.withOpacity(0.2),
@@ -393,21 +411,15 @@ class _HomePageState extends State<HomePage> {
       ),
       child: Row(
         children: [
-          // Icon Container
           Container(
             padding: const EdgeInsets.all(16),
             decoration: BoxDecoration(
               color: color.withOpacity(0.1),
               borderRadius: BorderRadius.circular(16),
             ),
-            child: Text(
-              icon,
-              style: const TextStyle(fontSize: 32),
-            ),
+            child: Text(icon, style: const TextStyle(fontSize: 32)),
           ),
           const SizedBox(width: 16),
-          
-          // Content
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
@@ -436,44 +448,21 @@ class _HomePageState extends State<HomePage> {
                             Container(
                               width: 6,
                               height: 6,
-                              decoration: const BoxDecoration(
-                                color: Colors.red,
-                                shape: BoxShape.circle,
-                              ),
+                              decoration: const BoxDecoration(color: Colors.red, shape: BoxShape.circle),
                             ),
                             const SizedBox(width: 4),
-                            const Text(
-                              'LIVE',
-                              style: TextStyle(
-                                color: Colors.red,
-                                fontSize: 9,
-                                fontWeight: FontWeight.bold,
-                              ),
-                            ),
+                            const Text('LIVE', style: TextStyle(color: Colors.red, fontSize: 9, fontWeight: FontWeight.bold)),
                           ],
                         ),
                       ),
                   ],
                 ),
                 const SizedBox(height: 6),
-                Text(
-                  value,
-                  style: TextStyle(
-                    fontSize: 22,
-                    fontWeight: FontWeight.bold,
-                    color: color,
-                  ),
-                ),
+                Text(value, style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold, color: color)),
                 const SizedBox(height: 4),
                 Text(
-                  isConnected
-                      ? '${(confidence * 100).toStringAsFixed(0)}% confidence'
-                      : 'Connecting...',
-                  style: TextStyle(
-                    fontSize: 11,
-                    color: Colors.grey[500],
-                    fontWeight: FontWeight.w500,
-                  ),
+                  isConnected ? '${(confidence * 100).toStringAsFixed(0)}% confidence' : 'Connecting...',
+                  style: TextStyle(fontSize: 11, color: Colors.grey[500], fontWeight: FontWeight.w500),
                 ),
               ],
             ),
@@ -519,23 +508,9 @@ class _HomePageState extends State<HomePage> {
         children: [
           Text(icon, style: const TextStyle(fontSize: 32)),
           const SizedBox(height: 10),
-          Text(
-            title,
-            style: TextStyle(
-              fontSize: 12,
-              color: Colors.grey[600],
-              fontWeight: FontWeight.w600,
-            ),
-          ),
+          Text(title, style: TextStyle(fontSize: 12, color: Colors.grey[600], fontWeight: FontWeight.w600)),
           const SizedBox(height: 6),
-          Text(
-            value,
-            style: TextStyle(
-              fontSize: 20,
-              fontWeight: FontWeight.bold,
-              color: color,
-            ),
-          ),
+          Text(value, style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: color)),
         ],
       ),
     );
@@ -558,27 +533,9 @@ class _HomePageState extends State<HomePage> {
       ),
       child: Row(
         children: [
-          Expanded(
-            child: _buildGrowthMetric(
-              '📏',
-              'Height',
-              '${babyData!['height']?.toStringAsFixed(1) ?? 0.0} cm',
-              Colors.teal,
-            ),
-          ),
-          Container(
-            width: 1,
-            height: 60,
-            color: Colors.grey[200],
-          ),
-          Expanded(
-            child: _buildGrowthMetric(
-              '⚖️',
-              'Weight',
-              '${babyData!['weight']?.toStringAsFixed(1) ?? 0.0} kg',
-              Colors.amber,
-            ),
-          ),
+          Expanded(child: _buildGrowthMetric('📏', 'Height', '${babyData!['height']?.toStringAsFixed(1) ?? 0.0} cm', Colors.teal)),
+          Container(width: 1, height: 60, color: Colors.grey[200]),
+          Expanded(child: _buildGrowthMetric('⚖️', 'Weight', '${babyData!['weight']?.toStringAsFixed(1) ?? 0.0} kg', Colors.amber)),
         ],
       ),
     );
@@ -589,23 +546,9 @@ class _HomePageState extends State<HomePage> {
       children: [
         Text(icon, style: const TextStyle(fontSize: 32)),
         const SizedBox(height: 8),
-        Text(
-          title,
-          style: TextStyle(
-            fontSize: 12,
-            color: Colors.grey[600],
-            fontWeight: FontWeight.w600,
-          ),
-        ),
+        Text(title, style: TextStyle(fontSize: 12, color: Colors.grey[600], fontWeight: FontWeight.w600)),
         const SizedBox(height: 4),
-        Text(
-          value,
-          style: TextStyle(
-            fontSize: 18,
-            fontWeight: FontWeight.bold,
-            color: color,
-          ),
-        ),
+        Text(value, style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: color)),
       ],
     );
   }
@@ -657,17 +600,67 @@ class _HomePageState extends State<HomePage> {
                 child: Icon(icon, size: 24, color: color),
               ),
               const SizedBox(height: 8),
-              Text(
-                title,
-                style: TextStyle(
-                  fontSize: 13,
-                  fontWeight: FontWeight.w600,
-                  color: Colors.grey[800],
-                ),
-                textAlign: TextAlign.center,
-              ),
+              Text(title, style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: Colors.grey[800]), textAlign: TextAlign.center),
             ],
           ),
+        ),
+      ),
+    );
+  }
+}
+
+// -----------------------------------------------------------------------------
+// NEW LIVE MONITORING PAGE
+// -----------------------------------------------------------------------------
+class LiveMonitoringPage extends StatelessWidget {
+  const LiveMonitoringPage({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      backgroundColor: Colors.black,
+      appBar: AppBar(
+        title: const Text('Live Stream'),
+        backgroundColor: Colors.transparent,
+        elevation: 0,
+        foregroundColor: Colors.white,
+      ),
+      body: Center(
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            // Placeholder for the actual WebRTC/Video stream
+            Container(
+              width: double.infinity,
+              height: 300,
+              margin: const EdgeInsets.all(20),
+              decoration: BoxDecoration(
+                color: Colors.grey[900],
+                borderRadius: BorderRadius.circular(20),
+                border: Border.all(color: Colors.pink.withOpacity(0.5)),
+              ),
+              child: const Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Icon(Icons.videocam_off_rounded, color: Colors.white54, size: 64),
+                  SizedBox(height: 16),
+                  Text(
+                    'Initializing Video Stream...',
+                    style: TextStyle(color: Colors.white70, fontSize: 16),
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(height: 20),
+            const Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 40),
+              child: Text(
+                'Once your camera device is active, the live feed will appear here.',
+                textAlign: TextAlign.center,
+                style: TextStyle(color: Colors.white54, fontSize: 13),
+              ),
+            ),
+          ],
         ),
       ),
     );

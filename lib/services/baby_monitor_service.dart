@@ -19,7 +19,7 @@ class BabyMonitorService {
   // ⚠️ FOR ANDROID EMULATOR: Use 10.0.2.2
   // ⚠️ FOR PHYSICAL DEVICE: Use 192.168.1.xxx
   final String serverIp = "127.0.0.1"; 
-  final int port = 8765;
+  final int port = 5001;
 
   bool _isConnected = false;
 
